@@ -1,4 +1,4 @@
-module http
+module github.com/shicli/gin-first
 
 go 1.19
 

@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/shicli/gin-first/common"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"http/common"
 )
 
 func main() {
