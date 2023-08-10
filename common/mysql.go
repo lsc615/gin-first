@@ -6,7 +6,6 @@ import (
 	"gorm.io/driver/mysql"
 	//"github.com/jinzhu/gorm"
 	"gorm.io/gorm"
-	"log"
 )
 
 //var ConfigPath string
@@ -37,8 +36,6 @@ type Probe struct {
 	Age  int
 }
 
-var DB *gorm.DB
-
 func InitDB() *gorm.DB {
 	username := viper.GetString("datasource.username")
 	password := viper.GetString("datasource.password")
@@ -55,20 +52,19 @@ func InitDB() *gorm.DB {
 		panic(fmt.Errorf("连接数据库失败：%s", err))
 	}
 
-	// 创建数据对象
-	probe := Probe{
-		Name: "shicli",
-		Age:  29,
-	}
-
-	// 插入数据
-	result := db.Create(&probe)
-	if result.Error != nil {
-		log.Fatalf("无法插入数据：%v", result.Error)
-	}
-
-	DB = db
 	return db
+	//// 创建数据对象
+	//probe := Probe{
+	//	Name: "c",
+	//	Age:  3,
+	//}
+	//
+	//// 插入数据
+	//result := db.Create(&probe)
+	//if result.Error != nil {
+	//	log.Fatalf("无法插入数据：%v", result.Error)
+	//}
+
 	//// 监控配置文件变化
 	//viper.WatchConfig()
 	//// 注意！！！配置文件发生变化后要同步到全局变量Conf
