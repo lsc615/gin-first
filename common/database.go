@@ -8,35 +8,9 @@ import (
 	"gorm.io/gorm"
 )
 
-//var ConfigPath string
-//
-//type Config struct {
-//	Server     ServerConfig `yaml:"server"`
-//	DataSource MysqlConfig  `yaml:"datasource"`
-//}
-//
-//type ServerConfig struct {
-//	Port int `yaml:"port"`
-//}
-//
-//type MysqlConfig struct {
-//	DriverName string `yaml:"drivername"`
-//	Host       string `yaml:"host"`
-//	Port       int    `yaml:"port"`
-//	Database   string `yaml:"database"`
-//	Username   string `yaml:"username"`
-//	Password   string `yaml:"password"`
-//	Charset    string `yaml:"charset"`
-//	Loc        string `yaml:"loc"`
-//}
-//
+var DB *gorm.DB
 
-type Probe struct {
-	Name string
-	Age  int
-}
-
-func InitDB() *gorm.DB {
+func InitDB() (DB *gorm.DB) {
 	username := viper.GetString("datasource.username")
 	password := viper.GetString("datasource.password")
 	host := viper.GetString("datasource.host")
@@ -46,13 +20,12 @@ func InitDB() *gorm.DB {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		username, password, host, port, database)
 	println(dsn)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	DB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 		panic(fmt.Errorf("连接数据库失败：%s", err))
 	}
-
-	return db
+	return DB
 	//// 创建数据对象
 	//probe := Probe{
 	//	Name: "c",
@@ -76,6 +49,6 @@ func InitDB() *gorm.DB {
 	//})
 }
 
-//func GetDB() *gorm.DB {
-//	return DB
-//}
+func GetDB() *gorm.DB {
+	return DB
+}
