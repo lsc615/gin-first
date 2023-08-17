@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/shicli/gin-first/common"
 	"github.com/shicli/gin-first/route"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -12,11 +13,9 @@ import (
 // @version		1.0
 // @description	This is gin
 // @contact.name	shicli
-//
-// @BasePath		controller
 func main() {
 	InitConfig()
-	//common.InitDB()
+	common.InitDB()
 	r := gin.Default()
 	r = route.CollectRoute(r)
 	port := viper.GetString("server.port")

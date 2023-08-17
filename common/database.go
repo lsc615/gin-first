@@ -2,15 +2,15 @@ package common
 
 import (
 	"fmt"
+	"github.com/shicli/gin-first/model"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
-	//"github.com/jinzhu/gorm"
 	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
 
-func InitDB() (DB *gorm.DB) {
+func InitDB() (db *gorm.DB) {
 	username := viper.GetString("datasource.username")
 	password := viper.GetString("datasource.password")
 	host := viper.GetString("datasource.host")
@@ -19,24 +19,18 @@ func InitDB() (DB *gorm.DB) {
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		username, password, host, port, database)
-	println(dsn)
-	DB, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(fmt.Errorf("连接数据库失败：%s", err))
 	}
+
+	err = db.AutoMigrate(&model.User{})
+	if err != nil {
+		panic(fmt.Errorf("创建表失败：%s", err))
+	}
+	DB = db
 	return DB
-	//// 创建数据对象
-	//probe := Probe{
-	//	Name: "c",
-	//	Age:  3,
-	//}
-	//
-	//// 插入数据
-	//result := db.Create(&probe)
-	//if result.Error != nil {
-	//	log.Fatalf("无法插入数据：%v", result.Error)
-	//}
 
 	//// 监控配置文件变化
 	//viper.WatchConfig()

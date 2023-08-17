@@ -1,112 +1,96 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/shicli/gin-first/common"
+	"github.com/shicli/gin-first/dto"
+	"github.com/shicli/gin-first/model"
 	"github.com/shicli/gin-first/response"
+	"github.com/shicli/gin-first/util"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+	"log"
+	"net/http"
 )
 
 type Article struct {
-	ID            uint32 `gorm:"primary_key" json:"id"`
-	CreatedBy     string `json:"created_by"`
-	ModifiedBy    string `json:"modified_by"`
-	CreatedOn     uint32 `json:"created_on"`
-	ModifiedOn    uint32 `json:"modified_on"`
-	DeletedOn     uint32 `json:"deleted_on"`
-	IsDel         uint8  `json:"is_del"`
-	Title         string `json:"title"`
-	Desc          string `json:"desc"`
-	Content       string `json:"content"`
-	CoverImageUrl string `json:"cover_image_url"`
-	State         uint8  `json:"state"`
+	ID        uint32 `gorm:"primary_key" json:"id"`
+	Name      string `json:"created_by"`
+	Telemetry string `json:"modified_by"`
 }
 
+// @Summary 注册信息
+// @Param name formData string false "名字"
+// @Param password formData string false "密码"
+// @Param telemetry formData string false "电话"
+// @Success 200 {object} Article "成功"
+// @Failure 400 {object} string "请求错误"
+// @Failure 500 {object} string "内部错误"
+// @Router /api/auth/register [POST]
 func Register(ctx *gin.Context) {
-	//DB := common.GetDB()
-	//var requestUser = model.User{}
-	//ctx.Bind(&requestUser)
-	////获取参数
-	//name := requestUser.Name
-	//telephone := requestUser.Telephone
-	//password := requestUser.Password
+	DB := common.GetDB()
+	var requestUser = model.User{}
+	ctx.ShouldBind(&requestUser)
 
-	//newUser := model.User{
-	//	Name:      name,
-	//	Telephone: telephone,
-	//	Password:  string(hasePassword),
-	//}
-	//DB.Create(&newUser)
+	//获取参数
+	name := requestUser.Name
+	telephone := requestUser.Telephone
+	password := requestUser.Password
 
-	token, _ := common.GenerateToken(1, "张三")
+	//数据验证
+	fmt.Println(telephone, "手机号码长度", len(telephone))
+	if len(telephone) != 11 {
+		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "手机号必须为11位")
+		return
+	}
+	if len(password) < 6 {
+		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "密码不能少于6位")
+		return
+	}
+	if len(name) == 0 {
+		name = util.RandString(10)
+	}
+
+	//判断手机号码是否存在
+	if isTelephoneExists(DB, telephone) {
+		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "用户已经存在")
+		return
+	}
+
+	//创建用户
+	hasePassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		response.Response(ctx, http.StatusUnprocessableEntity, 500, nil, "加密失败")
+		return
+	}
+
+	newUser := model.User{
+		Name:      name,
+		Telephone: telephone,
+		Password:  string(hasePassword),
+	}
+	DB.Create(&newUser)
+
+	token, _ := common.GenerateToken(newUser)
+	if err != nil {
+		response.Response(ctx, http.StatusUnprocessableEntity, 500, nil, "系统异常")
+		log.Printf("token generate error: %v", err)
+		return
+	}
 	response.Success(ctx, gin.H{"token": token}, "注册成功")
 }
 
-// @Summary	获取单个文章
-// @Produce	json
-// @Param		id	path		int		true	"文章ID"
-// @Success	200	{object}	Article	"成功"
-// @Failure	400	{object}	string	"请求错误"
-// @Failure	500	{object}	string	"内部错误"
-// @Router		/api/v1/articles/{id} [get]
-func (a Article) Get(c *gin.Context) {
-	return
+func Info(ctx *gin.Context) {
+	user, _ := ctx.Get("user")
+	ctx.JSON(http.StatusOK, gin.H{
+		"code": 200,
+		"data": gin.H{"user": dto.ToUserDto(user.(model.User))},
+	})
 }
 
-// @Summary	获取多个文章
-// @Produce	json
-// @Param		name		query		string	false	"文章名称"
-// @Param		tag_id		query		int		false	"标签ID"
-// @Param		state		query		int		false	"状态"
-// @Param		page		query		int		false	"页码"
-// @Param		page_size	query		int		false	"每页数量"
-// @Success	200			{object}	Article	"成功"
-// @Failure	400			{object}	string	"请求错误"
-// @Failure	500			{object}	string	"内部错误"
-// @Router		/api/v1/articles [get]
-func (a Article) List(c *gin.Context) {
-	return
-}
-
-// @Summary	创建文章
-// @Produce	json
-// @Param		tag_id			body		string	true	"标签ID"
-// @Param		title			body		string	true	"文章标题"
-// @Param		desc			body		string	false	"文章简述"
-// @Param		cover_image_url	body		string	true	"封面图片地址"
-// @Param		content			body		string	true	"文章内容"
-// @Param		created_by		body		int		true	"创建者"
-// @Param		state			body		int		false	"状态"
-// @Success	200				{object}	Article	"成功"
-// @Failure	400				{object}	string	"请求错误"
-// @Failure	500				{object}	string	"内部错误"
-// @Router		/api/v1/articles [post]
-func (a Article) Create(c *gin.Context) {
-
-}
-
-// @Summary	更新文章
-// @Produce	json
-// @Param		tag_id			body		string	false	"标签ID"
-// @Param		title			body		string	false	"文章标题"
-// @Param		desc			body		string	false	"文章简述"
-// @Param		cover_image_url	body		string	false	"封面图片地址"
-// @Param		content			body		string	false	"文章内容"
-// @Param		modified_by		body		string	true	"修改者"
-// @Success	200				{object}	Article	"成功"
-// @Failure	400				{object}	string	"请求错误"
-// @Failure	500				{object}	string	"内部错误"
-// @Router		/api/v1/articles/{id} [put]
-func (a Article) Update(c *gin.Context) {
-	return
-}
-
-// @Summary	删除文章
-// @Produce	json
-// @Param		id	path		int		true	"文章ID"
-// @Success	200	{string}	string	"成功"
-// @Failure	400	{object}	string	"请求错误"
-// @Failure	500	{object}	string	"内部错误"
-// @Router		/api/v1/articles/{id} [delete]
-func (a Article) Delete(c *gin.Context) {
-	return
+func isTelephoneExists(db *gorm.DB, telephone string) bool {
+	var user model.User
+	db.Where("telephone = ?", telephone).First(&user)
+	return user.ID != 0
 }
