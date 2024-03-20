@@ -13,7 +13,7 @@ type Claims struct {
 
 var jwtKey = []byte("手写的从前") // 定义secret，后面会用到
 
-func GenerateToken(user model.User) (tokenString string, err error) {
+func ReleaseToken(user model.User) (tokenString string, err error) {
 	// 初始化
 	claim := Claims{
 		ID: user.ID,
@@ -25,7 +25,10 @@ func GenerateToken(user model.User) (tokenString string, err error) {
 		}}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim) // 使用HS256算法
 	tokenString, err = token.SignedString(jwtKey)             // stsignKey必须是byte字节的,所以我们在设置签名秘钥,要使用byte强转
-	println(token)
+
+	if err != nil {
+		return "", err
+	}
 	return tokenString, err
 }
 

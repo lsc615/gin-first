@@ -25,20 +25,20 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "名字",
-                        "name": "name",
-                        "in": "formData"
+                        "name": "Name",
+                        "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "密码",
-                        "name": "password",
-                        "in": "formData"
+                        "name": "Password",
+                        "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "电话",
-                        "name": "telemetry",
-                        "in": "formData"
+                        "name": "Telemetry",
+                        "in": "query"
                     }
                 ],
                 "responses": {

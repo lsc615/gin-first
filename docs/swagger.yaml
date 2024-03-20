@@ -19,16 +19,16 @@ paths:
     post:
       parameters:
       - description: 名字
-        in: formData
-        name: name
+        in: query
+        name: Name
         type: string
       - description: 密码
-        in: formData
-        name: password
+        in: query
+        name: Password
         type: string
       - description: 电话
-        in: formData
-        name: telemetry
+        in: query
+        name: Telemetry
         type: string
       responses:
         "200":

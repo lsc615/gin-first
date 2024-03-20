@@ -2,7 +2,6 @@ package response
 
 import (
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
@@ -15,8 +14,7 @@ func Response(ctx *gin.Context, httpStatus int, code int, data gin.H, msg string
 }
 
 func Success(ctx *gin.Context, data gin.H, msg string) {
-	//Response(ctx, http.StatusOK, 200, data, msg)
-	log.Println(data)
+	Response(ctx, http.StatusOK, 200, data, msg)
 }
 
 func Fail(ctx *gin.Context, msg string, data gin.H) {

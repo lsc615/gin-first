@@ -25,6 +25,7 @@ func InitDB() (db *gorm.DB) {
 		panic(fmt.Errorf("连接数据库失败：%s", err))
 	}
 
+	// 自动创建数据表
 	err = db.AutoMigrate(&model.User{})
 	if err != nil {
 		panic(fmt.Errorf("创建表失败：%s", err))
