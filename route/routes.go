@@ -30,5 +30,6 @@ func CollectRoute(r *gin.Engine) *gin.Engine {
 	r.POST("/api/auth/login", controller.Login)
 	// 中间件AuthMiddleware实现用户的认证，保护路由
 	r.GET("/api/auth/info", middleware.AuthMiddleware(), controller.Info)
+
 	return r
 }

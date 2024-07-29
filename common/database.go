@@ -2,10 +2,13 @@ package common
 
 import (
 	"fmt"
-	"github.com/shicli/gin-first/model"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/logging/logrus"
+	"gorm.io/plugin/opentelemetry/tracing"
+	"time"
 )
 
 var DB *gorm.DB
@@ -20,16 +23,33 @@ func InitDB() (db *gorm.DB) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		username, password, host, port, database)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	// Set logger
+	logger := logger.New(
+		logrus.NewWriter(),
+		logger.Config{
+			SlowThreshold: time.Millisecond,
+			LogLevel:      logger.Warn,
+			Colorful:      false,
+		},
+	)
+
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: logger})
 	if err != nil {
 		panic(fmt.Errorf("连接数据库失败：%s", err))
 	}
 
-	// 自动创建数据表
-	err = db.AutoMigrate(&model.User{})
-	if err != nil {
-		panic(fmt.Errorf("创建表失败：%s", err))
+	// Set tracing and metrics
+	// db.Use(tracing.NewPlugin())
+	// Set only tracing
+	if err := db.Use(tracing.NewPlugin(tracing.WithoutMetrics())); err != nil {
+		panic(err)
 	}
+
+	// 自动创建数据表
+	//err = db.AutoMigrate(&model.User{})
+	//if err != nil {
+	//	panic(fmt.Errorf("创建表失败：%s", err))
+	//}
 	DB = db
 	return DB
 

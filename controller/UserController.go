@@ -28,10 +28,10 @@ type Article struct {
 // @Failure 400 {object} string "请求错误"
 // @Failure 500 {object} string "内部错误"
 // @Router /api/auth/register [POST]
-func Register(ctx *gin.Context) {
+func Register(c *gin.Context) {
 	DB := common.GetDB()
 	var requestUser = model.User{}
-	ctx.Bind(&requestUser)
+	c.Bind(&requestUser)
 
 	//获取参数
 	name := requestUser.Name
@@ -40,11 +40,11 @@ func Register(ctx *gin.Context) {
 
 	//数据验证
 	if len(telephone) != 11 {
-		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "手机号必须为11位")
+		response.Response(c, http.StatusUnprocessableEntity, 422, nil, "手机号必须为11位")
 		return
 	}
 	if len(password) < 6 {
-		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "密码不能少于6位")
+		response.Response(c, http.StatusUnprocessableEntity, 422, nil, "密码不能少于6位")
 		return
 	}
 
@@ -55,7 +55,7 @@ func Register(ctx *gin.Context) {
 
 	//判断手机号码是否存在
 	if isTelephoneExists(DB, name) {
-		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "用户已经存在")
+		response.Response(c, http.StatusUnprocessableEntity, 422, nil, "用户已经存在")
 		log.Printf("用户已经存在")
 		return
 	}
@@ -63,7 +63,7 @@ func Register(ctx *gin.Context) {
 	//创建用户，加密
 	hasePassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		response.Response(ctx, http.StatusInternalServerError, 500, nil, "加密失败")
+		response.Response(c, http.StatusInternalServerError, 500, nil, "加密失败")
 		return
 	}
 
@@ -76,69 +76,73 @@ func Register(ctx *gin.Context) {
 
 	token, err := common.ReleaseToken(newUser)
 	if err != nil {
-		response.Response(ctx, http.StatusUnprocessableEntity, 500, nil, "系统异常")
+		response.Response(c, http.StatusUnprocessableEntity, 500, nil, "系统异常")
 		log.Printf("token generate error: %v", err)
 		return
 	}
 
-	response.Success(ctx, gin.H{"token": token}, "注册成功")
+	response.Success(c, gin.H{"token": token}, "注册成功")
 }
 
-func Login(ctx *gin.Context) {
+func Login(c *gin.Context) {
 	DB := common.GetDB()
 	var requestUser = model.User{}
-	ctx.ShouldBind(&requestUser)
+	c.ShouldBind(&requestUser)
 	//获取参数
 	//name := requestUser.Name
 	telephone := requestUser.Telephone
 	password := requestUser.Password
 	//数据验证
 	if len(telephone) != 11 {
-		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "手机号必须为11位")
+		response.Response(c, http.StatusUnprocessableEntity, 422, nil, "手机号必须为11位")
 		return
 	}
 	if len(password) < 6 {
-		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "密码不能少于6位")
+		response.Response(c, http.StatusUnprocessableEntity, 422, nil, "密码不能少于6位")
 		return
 	}
 	//判断手机号码是否存在
 	var user model.User
-	DB.Where("telephone = ?", telephone).First(&user)
+	// 从Gin请求中获取追踪上下文
+	ctx := c.Request.Context()
+	// 使用追踪上下文创建GORM会话
+	DB.WithContext(ctx).Where("telephone = ?", telephone).First(&user)
+	// DB.Where("telephone = ?", telephone).First(&user) // 默认
 	if user.ID == 0 {
-		response.Response(ctx, http.StatusUnprocessableEntity, 422, nil, "手机号不存在")
+		response.Response(c, http.StatusUnprocessableEntity, 422, nil, "手机号不存在")
 		return
 	}
 
 	//判断密码是否正确
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"code": 400, "msg": "密码错误"})
+		c.JSON(http.StatusBadRequest, gin.H{"code": 400, "msg": "密码错误"})
 		return
 	}
 
 	//发放token
 	token, err := common.ReleaseToken(user)
 	if err != nil {
-		response.Response(ctx, http.StatusUnprocessableEntity, 500, nil, "系统异常")
+		response.Response(c, http.StatusUnprocessableEntity, 500, nil, "系统异常")
 		log.Printf("token generate error: %v", err)
 		return
 	}
 
 	//返回结果
-	response.Success(ctx, gin.H{"data": token}, "登陆成功")
+	response.Success(c, gin.H{"data": token}, "登陆成功")
 
 	client := &http.Client{}
 
 	// 构造请求到 /api/v1/users
 	req, err := http.NewRequest("GET", "http://127.0.0.1:8081/version", nil)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
 		return
 	}
 
 	// 发送请求并获取响应
 	resp, err := client.Do(req)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to send request"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to send request"})
 		return
 	}
 	defer resp.Body.Close()
@@ -146,18 +150,17 @@ func Login(ctx *gin.Context) {
 	// 读取响应体
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
 		return
 	}
 
 	// 将响应返回给原始请求的客户端
-	ctx.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
-
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 }
 
-func Info(ctx *gin.Context) {
-	user, _ := ctx.Get("user")
-	ctx.JSON(http.StatusOK, gin.H{
+func Info(c *gin.Context) {
+	user, _ := c.Get("user")
+	c.JSON(http.StatusOK, gin.H{
 		"code": 200,
 		//"data": gin.H{"user": user},
 		//重新定义返回的信息,user包含敏感信息
