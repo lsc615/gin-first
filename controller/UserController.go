@@ -9,6 +9,7 @@ import (
 	"github.com/shicli/gin-first/util"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"io"
 	"log"
 	"net/http"
 )
@@ -86,7 +87,7 @@ func Register(ctx *gin.Context) {
 func Login(ctx *gin.Context) {
 	DB := common.GetDB()
 	var requestUser = model.User{}
-	ctx.Bind(&requestUser)
+	ctx.ShouldBind(&requestUser)
 	//获取参数
 	//name := requestUser.Name
 	telephone := requestUser.Telephone
@@ -124,6 +125,34 @@ func Login(ctx *gin.Context) {
 
 	//返回结果
 	response.Success(ctx, gin.H{"data": token}, "登陆成功")
+
+	client := &http.Client{}
+
+	// 构造请求到 /api/v1/users
+	req, err := http.NewRequest("GET", "http://127.0.0.1:8081/version", nil)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// 发送请求并获取响应
+	resp, err := client.Do(req)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to send request"})
+		return
+	}
+	defer resp.Body.Close()
+
+	// 读取响应体
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+		return
+	}
+
+	// 将响应返回给原始请求的客户端
+	ctx.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
+
 }
 
 func Info(ctx *gin.Context) {
