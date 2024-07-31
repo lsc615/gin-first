@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -12,6 +14,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"google.golang.org/grpc/credentials"
+	"io"
+	"net/http"
 	"os"
 	"time"
 )
@@ -66,14 +70,6 @@ func InitTrace() (func(context.Context) error, error) {
 		return nil, err
 	}
 
-	// 创建 stdout exporter
-	//exporter, err := stdouttrace.New(
-	//	stdouttrace.WithPrettyPrint(),
-	//)
-	//if err != nil {
-	//	return nil, fmt.Errorf("creating stdout exporter: %w", err)
-	//}
-
 	// 创建TracerProvider
 	otlpProvider := trace.NewTracerProvider(
 		trace.WithSampler(trace.AlwaysSample()),
@@ -88,4 +84,38 @@ func InitTrace() (func(context.Context) error, error) {
 	// 设置传播上下文的处理器
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	return exporter.Shutdown, nil
+}
+
+func testSpan(c *gin.Context) {
+
+	// 从Gin请求中获取trace上下文
+	ctx := c.Request.Context()
+
+	client := &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
+	// 构造请求到 /api/v1/users
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://127.0.0.1:8081/version", nil)
+	//req, err := http.NewRequest("GET", "http://127.0.0.1:8081/version", nil)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
+		return
+	}
+
+	// 发送请求并获取响应
+	resp, err := client.Do(req)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to send request"})
+		return
+	}
+	defer resp.Body.Close()
+
+	// 读取响应体
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response body"})
+		return
+	}
+
+	// 将响应返回给原始请求的客户端
+	c.Data(resp.StatusCode, resp.Header.Get("Content-Type"), body)
 }

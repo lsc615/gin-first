@@ -40,6 +40,7 @@ func main() {
 	r := gin.Default()
 	r.Use(otelgin.Middleware(controller.ServiceName))
 	r = route.CollectRoute(r)
+	controller.TestMetric()
 
 	port := viper.GetString("server.port")
 	if err := r.Run("127.0.0.1:" + port); err != nil {
